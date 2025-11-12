@@ -34,3 +34,12 @@ Treat the `laravel/` directory as a scratchpad: docblocks were omitted for brevi
 - Queue configuration sets `after_commit = true` so jobs are enqueued only after the surrounding transaction commits.
 - Local development can run the database queue driver; higher environments should use AWS SQS or another managed queue.
 - Database isolation must be at least `READ COMMITTED` (ideally `REPEATABLE READ` or `SERIALIZABLE`) so only committed data is visible to the jobs.
+
+## AI / LLM usage
+LLM's were used for:
+- Generating boiler plate diagrams
+- Preforming transformations on multiple files.
+  - For example "insert comments to dispatch events in our jobs in the following cases ...", after which I would go 
+    through them and check it.
+- Evaluating documentation against goals listed in the assignment brief.
+- 

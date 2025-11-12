@@ -35,7 +35,7 @@ class DuplicateItems extends DuplicateBase {
 
         $partsQuery = Part::query()
             ->where('episode_id', $this->newEpisodeId)
-            ->whereNotNull('orig_id');
+            ->whereNotNull('orig_id'); // So only duplicated parts with originals are considered
 
         if (!$partsQuery->exists()) {
             // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'items', message => 'No new parts found for episode; skipping items'

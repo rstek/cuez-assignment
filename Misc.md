@@ -20,3 +20,11 @@ A lightweight state machine on `EpisodeDuplication` would codify allowed transit
 
 ## Deadletter queue / failed jobs queue / queue cleanup
 Define how failed jobs are triaged—manual replay, automated DLQ consumer, or both—and run periodic cleanup so dead-letter queues do not grow unbounded.
+
+## Potential improvement
+Instead of sequential job chains, dispatch child jobs as parent chunks complete:
+- After each Parts chunk → dispatch Items job for those parts
+- After each Items chunk → dispatch Blocks job for those items
+
+This would reduce runtime. But increases complexity and idempotency becomes harder.  
+And if DB I/O is the bottleneck, it doesn't help.

@@ -38,7 +38,7 @@ class DuplicateBlocks extends DuplicateBase {
 
         $partsQuery = Part::query()
             ->where('episode_id', $this->newEpisodeId)
-            ->whereNotNull('orig_id');
+            ->whereNotNull('orig_id'); // So only duplicated parts with originals are considered
 
         if (!$partsQuery->exists()) {
             $this->log('info', 'No new parts found for episode; skipping blocks duplication');
@@ -74,7 +74,7 @@ class DuplicateBlocks extends DuplicateBase {
 
             Item::query()
                 ->whereIn('part_id', $newPartIds)
-                ->whereNotNull('orig_id')
+                ->whereNotNull('orig_id') // So only duplicated items with originals are considered
                 ->chunk(self::ITEMS_CHUNK_SIZE, function(Collection $items) use (&$totalBlocks, &$processedItemChunks, &$processedBlockChunks) {
                     /** @var Collection<Item> $items */
 
