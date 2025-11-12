@@ -48,7 +48,7 @@ return new class extends Migration {
         Schema::create('duplications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('episode_id')->constrained()->onDelete('cascade');
-            $table->foreignId('new_episode_id')->constrained()->onDelete('cascade');
+            $table->foreignId('new_episode_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('status')->default('pending'); // pending, in_progress, failed, completed
             $table->json('progress')->default('{}');
             $table->timestamps();
