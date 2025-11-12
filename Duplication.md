@@ -120,12 +120,29 @@ Checks if the featureflag is enabled.
 Will check status of duplication and stop if needed.  
 Will handle logging and error handling.  
 
+<details>
+<summary>DuplicateBase class</summary>
+
 ```php
+<?php
+
+namespace App\Jobs;
+
+use App\Models\EpisodeDuplication;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\ThrottlesExceptions;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
 abstract class DuplicateBase implements ShouldQueue {
 
     use Queueable;
 
     protected EpisodeDuplication $episodeDuplication;
+
+    // OTEL: provide spanInterface $jobSpan & TracerInterface
 
     /**
      * Create a new job instance.
@@ -137,26 +154,40 @@ abstract class DuplicateBase implements ShouldQueue {
         // By not passing the objects, the serialized version of the jobs should be considerably smaller.
     }
 
+    public function middleware(): array {
+        return [
+            new ThrottlesExceptions(5, 60), // Allow 5 exceptions per minute
+            new WithoutOverlapping("duplication:{$this->duplicationId}"),
+            // add middleware that checks RDS load and delays job if too high
+        ];
+    }
+
     /**
      * Execute the job.
      */
     public function handle(): void {
+        // OTEL: Create & activate job span for current job with attributes like
+        // "job_class" (static::class), "duplication_id", "org_episode_id", "started_at"
+
         $this->episodeDuplication = EpisodeDuplication::find($this->duplicationId);
 
         // Feature flag gate (pseudo). If disabled, skip the job gracefully.
         if (!$this->featureEnabled()) {
             $this->log('info', 'Duplication feature disabled, skipping job');
-            
+            $this->release(30); // Release back into queue after 30 seconds. Assuming the feature will be re-enabled
+            // at some point.
             return;
         }
 
-
         // Handle status transitions via switch
+        // OTEL: create span for status transition if needed
         switch ($this->episodeDuplication->status) {
             case 'pending':
                 $this->episodeDuplication->update(['status' => 'in_progress']);
                 $this->log('info', 'Status transitioned from pending to in_progress');
+                // TODO: dispatch event duplication.started: id => $this->duplicationId, startedAt => now()
                 break;
+
             case 'in_progress':
                 // continue
                 break;
@@ -166,20 +197,22 @@ abstract class DuplicateBase implements ShouldQueue {
                 ]);
                 return;
         }
+        // OTEL: close status transition span
 
         try {
             $this->log('info', 'Starting ' . static::class);
             $this->handleDuplication();
+            // OTEL: set status job span
         }
         catch (Throwable $e) {
+            // OTEL: record exception in job span and set status to error
+            $this->episodeDuplication->update(['status' => 'failed']);
             $this->log('error', 'Fatal error during duplication', [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e),
             ]);
-
-            $this->episodeDuplication->update(['status' => 'failed']);
-
-
+            // TODO: dispatch event duplication.failed: id => $this->duplicationId, errorCode => get_class($e), message => $e->getMessage()
             throw $e;
         }
     }
@@ -189,13 +222,11 @@ abstract class DuplicateBase implements ShouldQueue {
      */
     abstract protected function handleDuplication(): void;
 
-
     /**
      * Pseudo feature flag toggle. Return false to disable duplication jobs.
      */
-    protected function featureEnabled(): bool
-    {
-        return true;
+    protected function featureEnabled(): bool {
+        return TRUE;
     }
 
     /**
@@ -210,10 +241,11 @@ abstract class DuplicateBase implements ShouldQueue {
 
         Log::channel("duplication")->$level($message, $context);
     }
+
 }
 
-
 ```
+</details>
 
 #### Duplicate Episode (single record)
 0. DuplicationBase::handle() will decide if we continue
@@ -221,28 +253,42 @@ abstract class DuplicateBase implements ShouldQueue {
 2. Replicate without ID
 3. Save
 4. Update EpisodeDuplication with new episode id
+
+<details>
+<summary>Duplicate Episode Job</summary>
+
 ```php
-class DuplicateEpisode extends DuplicateBase
-{
+<?php
+
+namespace App\Jobs;
+
+use App\Exceptions\OriginalEpisodeNotFound;use App\Models\Episode;use Illuminate\Support\Facades\DB;
+
+class DuplicateEpisode extends DuplicateBase {
+
     /**
      * Handle the duplication of the episode.
      */
-    protected function handleDuplication(): void
-    {
+    protected function handleDuplication(): void {
+        // OTEL: create span for loading original episode
+
         $episode = Episode::query()->where('id', $this->orgEpisodeId)->first();
 
         if (!$episode) {
             $this->log('error', 'Original episode not found', [
                 'episode_id' => $this->orgEpisodeId,
             ]);
-            throw new \Exception("Episode {$this->orgEpisodeId} not found");
+            throw new OriginalEpisodeNotFound($this->orgEpisodeId);
         }
 
         $this->log('debug', 'Original episode loaded', [
             'episode_title' => $episode->title,
         ]);
+        // OTEL: end episode load span
 
-        DB::transaction(function () use ($episode) {
+        // OTEL: create span for transaction
+
+        DB::transaction(function() use ($episode) {
             $newEpisode = $episode->replicate(['id']);
             $newEpisode->orig_id = $episode->id;
             $newEpisode->save();
@@ -253,23 +299,39 @@ class DuplicateEpisode extends DuplicateBase
             ]);
 
             $this->episodeDuplication->update(['new_episode_id' => $newEpisode->id]);
+            // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'episode', message => 'episode duplicated', amount => 1
 
             $this->log('info', 'Episode duplication completed', [
                 'new_episode_id' => $newEpisode->id,
             ]);
         }, attempts: 3);
-    }
-}
-```
+        // OTEL: end transaction span
 
+    }
+
+}
+
+```
+</details>
 
 #### Duplicate Parts
 0. DuplicationBase::handle() will decide if we continue
 1. Find parts for given episode to duplicate and prepare new records. We chunk the query to limit potential performance issues.
-2. Bulk insert duplicate parts for each chunk 
+2. Bulk insert duplicate parts for each chunk
 3. Update EpisodeDuplication with progress
 
+<details>
+<summary>Duplicate Parts Job</summary>
+
 ```php
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Part;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
 class DuplicateParts extends DuplicateBase {
 
     private const CHUNK_SIZE = 100;
@@ -285,10 +347,11 @@ class DuplicateParts extends DuplicateBase {
         $this->log('info', 'Duplicating parts', [
             'chunk_size' => self::CHUNK_SIZE,
         ]);
+        // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'parts', message => 'parts duplication started'
 
         $totalParts = 0;
         $processedChunks = 0;
-
+        // OTEL: create span for database query span
         Part::query()
             ->where('episode_id', $this->orgEpisodeId)
             ->chunk(self::CHUNK_SIZE, function(Collection $parts) use (&$totalParts, &$processedChunks) {
@@ -301,18 +364,24 @@ class DuplicateParts extends DuplicateBase {
             'total_parts' => $totalParts,
             'total_chunks' => $processedChunks,
         ]);
+        // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'parts', message => 'parts finished duplicating', total_parts => $totalParts
+
+        // OTEL: end database query span
     }
 
     /**
      * Process a chunk of parts.
      */
     private function processChunk(Collection $parts, int $chunkNumber): void {
+        // OTEL: create span for processing Chunk
+
         $duplicateParts = [];
 
-        /** @var Collection<int, Part> $parts */
+        /** @var Collection<Part> $parts */
         foreach ($parts as $part) {
             $newPart = $part->except(['id', 'episode_id']);
             $newPart['episode_id'] = $this->newEpisodeId;
+            $newPart['orig_id'] = $part->id;
             $duplicateParts[] = $newPart;
         }
 
@@ -321,20 +390,25 @@ class DuplicateParts extends DuplicateBase {
             'parts_in_chunk' => count($duplicateParts),
         ]);
 
+        // OTEL: create span for transaction
         DB::transaction(function() use ($duplicateParts) {
+            // TODO: dispatch event duplication.progress: id => $this->duplicationId, stage => 'parts', amount => count($duplicateParts)
+
             DB::table('parts')->insert($duplicateParts);
             $this->episodeDuplication->addProgress('parts', count($duplicateParts));
         }, attempts: 3);
+        // OTEL: end transaction span
 
         $this->log('debug', 'Chunk processed successfully', [
             'chunk_number' => $chunkNumber,
             'parts_inserted' => count($duplicateParts),
         ]);
     }
+
 }
 
 ```
-
+</details>
 
 #### Duplicate Items
 0. DuplicationBase::handle() will decide if we continue
@@ -342,19 +416,33 @@ class DuplicateParts extends DuplicateBase {
 2. Given the list of original part ids, find all items for those parts to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 3. Bulk insert duplicate items for each chunk 
 4. Update EpisodeDuplication with progress
+
+<details>
+<summary>Duplicate Items Job</summary>
+
 ```php
-class DuplicateItems extends DuplicateBase
-{
+<?php
+
+namespace App\Jobs;
+
+use App\Exceptions\NewEpisodeIdMissing;
+use App\Models\Item;
+use App\Models\Part;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+class DuplicateItems extends DuplicateBase {
+
     private const PARTS_CHUNK_SIZE = 10 * self::ITEMS_CHUNK_SIZE;
+
     private const ITEMS_CHUNK_SIZE = 100;
-    
+
     private int $newEpisodeId;
 
     /**
      * Handle the duplication of items.
      */
-    protected function handleDuplication(): void
-    {
+    protected function handleDuplication(): void {
         $this->newEpisodeId = (int) ($this->episodeDuplication->new_episode_id ?? 0);
 
         if (!$this->newEpisodeId) {
@@ -366,12 +454,15 @@ class DuplicateItems extends DuplicateBase
             'parts_chunk_size' => self::PARTS_CHUNK_SIZE,
             'items_chunk_size' => self::ITEMS_CHUNK_SIZE,
         ]);
+        // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'items', message => 'items duplication started'
 
         $partsQuery = Part::query()
             ->where('episode_id', $this->newEpisodeId)
             ->whereNotNull('orig_id');
 
         if (!$partsQuery->exists()) {
+            // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'items', message => 'No new parts found for episode; skipping items'
+
             $this->log('info', 'No new parts found for episode; skipping items duplication');
             return;
         }
@@ -380,8 +471,12 @@ class DuplicateItems extends DuplicateBase
         $processedPartChunks = 0;
         $processedItemChunks = 0;
 
-        $partsQuery->chunk(self::PARTS_CHUNK_SIZE, function (Collection $parts) use (&$totalItems, &$processedPartChunks,
-            &$processedItemChunks) {
+        // OTEL: create span for parts query and chunking
+
+        $partsQuery->chunk(self::PARTS_CHUNK_SIZE, function(Collection $parts) use (
+            &$totalItems, &$processedPartChunks,
+            &$processedItemChunks
+        ) {
             /** @var Collection<Part> $parts */
 
             // Create mapping of original part ID to new part ID
@@ -393,25 +488,33 @@ class DuplicateItems extends DuplicateBase
                 'orig_ids_in_chunk' => count($origPartIds),
             ]);
 
+            // OTEL: create span for items query and chunking
+
             Item::query()
                 ->whereIn('part_id', $origPartIds)
-                ->chunk(self::ITEMS_CHUNK_SIZE, function (Collection $items) use (&$totalItems, &$processedItemChunks,
-                    $origToNewPartMap) {
+                ->chunk(self::ITEMS_CHUNK_SIZE, function(Collection $items) use (
+                    &$totalItems, &$processedItemChunks,
+                    $origToNewPartMap
+                ) {
                     /** @var Collection<Item> $items */
 
                     $this->processChunk($items, $processedItemChunks, $origToNewPartMap);
                     $totalItems += $items->count();
                     $processedItemChunks++;
                 });
+            // OTEL: end items query span
 
             $processedPartChunks++;
         });
+        // OTEL: end parts query span
 
         $this->log('info', 'Items duplication completed', [
             'total_items' => $totalItems,
             'total_part_chunks' => $processedPartChunks,
             'total_item_chunks' => $processedItemChunks,
         ]);
+        // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'items', message => 'items finished duplicating', total_items => $totalItems
+
     }
 
     /**
@@ -419,13 +522,14 @@ class DuplicateItems extends DuplicateBase
      *
      * @param Collection<Item> $items
      */
-    private function processChunk(Collection $items, int $chunkNumber, array $origToNewPartMap): void
-    {
+    private function processChunk(Collection $items, int $chunkNumber, array $origToNewPartMap): void {
+        // OTEL: create span for processing items chunk
         $duplicateItems = [];
 
         foreach ($items as $item) {
-            $newPartId = $origToNewPartMap[$item->part_id] ?? null;
+            $newPartId = $origToNewPartMap[$item->part_id] ?? NULL;
             if (!$newPartId) {
+                // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'items', message => 'Missing part mapping; skipping item'
                 continue;
             }
 
@@ -440,21 +544,27 @@ class DuplicateItems extends DuplicateBase
             'items_in_chunk' => count($duplicateItems),
         ]);
 
+        // OTEL: create span for transaction
+
         if (!empty($duplicateItems)) {
-            DB::transaction(function () use ($duplicateItems) {
+            DB::transaction(function() use ($duplicateItems) {
                 DB::table('items')->insert($duplicateItems);
                 $this->episodeDuplication->addProgress('items', count($duplicateItems));
+                // TODO: dispatch event duplication.progress: id => $this->duplicationId, stage => 'items', amount => count($duplicateItems)
             }, attempts: 3);
         }
+        // OTEL: end transaction span
 
         $this->log('debug', 'Items chunk processed successfully', [
             'chunk_number' => $chunkNumber,
             'items_inserted' => count($duplicateItems),
         ]);
     }
-}
-```
 
+}
+
+```
+</details>
 
 #### Duplicate Blocks
 0. DuplicationBase::handle() will decide if we continue
@@ -463,12 +573,23 @@ class DuplicateItems extends DuplicateBase
 2. Given the list of original item ids, find all blocks for those items to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 3. Bulk insert duplicate blocks for each chunk
 4. Update EpisodeDuplication with progress
-**TODO REVIEW**
+
+<details>
+<summary>Duplicate Blocks Job</summary>
+
 ```php
-class DuplicateBlocks extends DuplicateBase
-{
+<?php
+
+namespace App\Jobs;
+
+use App\Exceptions\NewEpisodeIdMissing;use App\Models\Block;use App\Models\Item;use App\Models\Part;use Illuminate\Support\Collection;use Illuminate\Support\Facades\DB;
+
+class DuplicateBlocks extends DuplicateBase {
+
     private const PARTS_CHUNK_SIZE = 10 * self::ITEMS_CHUNK_SIZE; // e.g. 1000
+
     private const ITEMS_CHUNK_SIZE = 100;                         // e.g. 100
+
     private const BLOCKS_CHUNK_SIZE = 200;                        // e.g. 200
 
     private int $newEpisodeId;
@@ -476,9 +597,8 @@ class DuplicateBlocks extends DuplicateBase
     /**
      * Handle the duplication of blocks.
      */
-    protected function handleDuplication(): void
-    {
-        $this->newEpisodeId = (int)($this->episodeDuplication->new_episode_id ?? 0);
+    protected function handleDuplication(): void {
+        $this->newEpisodeId = (int) ($this->episodeDuplication->new_episode_id ?? 0);
         if (!$this->newEpisodeId) {
             $this->log('error', 'New episode id not set on duplication');
             throw new NewEpisodeIdMissing($this->duplicationId);
@@ -489,6 +609,7 @@ class DuplicateBlocks extends DuplicateBase
             'items_chunk_size' => self::ITEMS_CHUNK_SIZE,
             'blocks_chunk_size' => self::BLOCKS_CHUNK_SIZE,
         ]);
+        // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'blocks', message => 'blocks duplication started'
 
         $partsQuery = Part::query()
             ->where('episode_id', $this->newEpisodeId)
@@ -496,6 +617,8 @@ class DuplicateBlocks extends DuplicateBase
 
         if (!$partsQuery->exists()) {
             $this->log('info', 'No new parts found for episode; skipping blocks duplication');
+            // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'blocks', message => 'No new parts found for episode; skipping blocks'
+
             return;
         }
 
@@ -505,7 +628,9 @@ class DuplicateBlocks extends DuplicateBase
         $processedBlockChunks = 0;
 
         // Chunk new parts (outer loop)
-        $partsQuery->chunk(self::PARTS_CHUNK_SIZE, function (Collection $parts) use (&$totalBlocks, &$processedPartChunks, &$processedItemChunks, &$processedBlockChunks) {
+        // OTEL: create span for parts query and chunking
+
+        $partsQuery->chunk(self::PARTS_CHUNK_SIZE, function(Collection $parts) use (&$totalBlocks, &$processedPartChunks, &$processedItemChunks, &$processedBlockChunks) {
             /** @var Collection<Part> $parts */
             $newPartIds = $parts->pluck('id')->all();
 
@@ -520,10 +645,12 @@ class DuplicateBlocks extends DuplicateBase
             }
 
             // Chunk new items for these parts (middle loop)
+            // OTEL: create span for items query and chunking
+
             Item::query()
                 ->whereIn('part_id', $newPartIds)
                 ->whereNotNull('orig_id')
-                ->chunk(self::ITEMS_CHUNK_SIZE, function (Collection $items) use (&$totalBlocks, &$processedItemChunks, &$processedBlockChunks) {
+                ->chunk(self::ITEMS_CHUNK_SIZE, function(Collection $items) use (&$totalBlocks, &$processedItemChunks, &$processedBlockChunks) {
                     /** @var Collection<Item> $items */
 
                     // Build orig_item_id => new_item_id map for this items chunk
@@ -541,20 +668,26 @@ class DuplicateBlocks extends DuplicateBase
                     }
 
                     // Chunk original blocks for these original items (inner loop)
+                    // OTEL: create span for blocks query and chunking
+
                     Block::query()
                         ->whereIn('item_id', $origItemIds)
-                        ->chunk(self::BLOCKS_CHUNK_SIZE, function (Collection $blocks) use (&$totalBlocks, &$processedBlockChunks, $origToNewItemMap) {
+                        ->chunk(self::BLOCKS_CHUNK_SIZE, function(Collection $blocks) use (&$totalBlocks, &$processedBlockChunks, $origToNewItemMap) {
                             /** @var Collection<Block> $blocks */
                             $inserted = $this->processBlocksChunk($blocks, $processedBlockChunks, $origToNewItemMap);
                             $totalBlocks += $inserted;
                             $processedBlockChunks++;
                         });
 
+                    // OTEL: end blocks query span
+
                     $processedItemChunks++;
                 });
+            // OTEL: end items query span
 
             $processedPartChunks++;
         });
+        // OTEL: end parts query span
 
         $this->log('info', 'Blocks duplication completed', [
             'total_blocks' => $totalBlocks,
@@ -562,6 +695,8 @@ class DuplicateBlocks extends DuplicateBase
             'total_item_chunks' => $processedItemChunks,
             'total_block_chunks' => $processedBlockChunks,
         ]);
+        // TODO: dispatch event duplication.completed: id => $this->duplicationId, newEpisodeId => $this->newEpisodeId, completedAt => now()
+
     }
 
     /**
@@ -570,15 +705,18 @@ class DuplicateBlocks extends DuplicateBase
      * @param Collection<Block> $blocks
      * @param int $chunkNumber
      * @param array $origToNewItemMap
+     *
      * @return int Number of blocks inserted
      */
-    private function processBlocksChunk(Collection $blocks, int $chunkNumber, array $origToNewItemMap): int
-    {
+    private function processBlocksChunk(Collection $blocks, int $chunkNumber, array $origToNewItemMap): int {
+        // OTEL: create span for processing blocks chunk
+
         $duplicateBlocks = [];
 
         foreach ($blocks as $block) {
-            $newItemId = $origToNewItemMap[$block->item_id] ?? null;
+            $newItemId = $origToNewItemMap[$block->item_id] ?? NULL;
             if (!$newItemId) {
+                // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'blocks', message => 'Missing item mapping; skipping block'
                 continue; // No mapping for this block's item; skip
             }
 
@@ -595,12 +733,16 @@ class DuplicateBlocks extends DuplicateBase
 
         $inserted = 0;
         if (!empty($duplicateBlocks)) {
-            DB::transaction(function () use ($duplicateBlocks, &$inserted) {
+            // OTEL: create span for transaction
+
+            DB::transaction(function() use ($duplicateBlocks, &$inserted) {
                 DB::table('blocks')->insert($duplicateBlocks);
                 $inserted = count($duplicateBlocks);
                 $this->episodeDuplication->addProgress('blocks', $inserted);
+                // TODO: dispatch event duplication.progress: id => $this->duplicationId, stage => 'blocks', amount => $inserted
             }, attempts: 3);
         }
+        // OTEL: end transaction span
 
         $this->log('debug', 'Blocks chunk processed successfully', [
             'chunk_number' => $chunkNumber,
@@ -609,10 +751,11 @@ class DuplicateBlocks extends DuplicateBase
 
         return $inserted;
     }
+
 }
 
 ```
-
+</details>
 
 ### Alternative naive implementation
 This can be useful for just validating an initial idea / as a proof of concept.

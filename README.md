@@ -1,25 +1,17 @@
 # Episode Duplication Assignment
 
 Written by Ronald Spilstijns (representing RSTEK bv)  
-Date 11/11/2025
+Date 12/11/2025
 Solution for duplicating an Episode and its nested structure (Parts > Items > Blocks) in a Laravel 12 context.  
 
-**Clone repo and open `docs/index.html` in browser to view with docsify.**
+**Clone repo and open `index.html` in browser to view with docsify.**
 Or you can view it in github.
 
 ## TODO for Ronald
-* Observability? Metrics? Tracing?
-* Job middleware? Throttle? WithoutOverlap?
-  * Concurrency? so locking that the same episode isn't duplicated twice at the same time.
-  * Get DB load for throttling (RDS / cloudwatch integration?)
 
 * Cleanup failed duplications?
-* Horizon ???
-* Queue / job being dependend on DB load?
 * Partial completes? What if it fails half way, can we recover?
 * Failed jobs? (dead letter queue)
-* Rollbacks?
-
 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  

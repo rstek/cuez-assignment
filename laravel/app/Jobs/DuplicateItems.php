@@ -99,9 +99,8 @@ class DuplicateItems extends DuplicateBase {
      *
      * @param Collection<Item> $items
      */
-    private function processChunk(Collection $items, int $chunkNumber, array $origToNewPartMap): void // OTEL: create span for processing items chunk
-
-    {
+    private function processChunk(Collection $items, int $chunkNumber, array $origToNewPartMap): void {
+        // OTEL: create span for processing items chunk
         $duplicateItems = [];
 
         foreach ($items as $item) {
