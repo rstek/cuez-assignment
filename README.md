@@ -11,6 +11,7 @@ Or you can view it in github.
 * Observability? Metrics? Tracing?
 * Job middleware? Throttle? WithoutOverlap?
   * Concurrency? so locking that the same episode isn't duplicated twice at the same time.
+  * Get DB load for throttling (RDS / cloudwatch integration?)
 * Cache warmup mention?
 * Cache in general?
 * Batching vs chunking + bulk inserts mentioned in docs
@@ -32,6 +33,7 @@ Or you can view it in github.
 * Events around the duplication
 * The Broadcasting + notifications
 * remove Duplication jobs table from model, no added value atm. 
+* Testing strategy
 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
