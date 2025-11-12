@@ -2,8 +2,12 @@
 
 We have the expected "Episode", "Part", "Item", "Block" models.
 
-But we also provide a "Duplication" wrapper called "EpisodeDuplication" to keep track of the duplication process.  
+But we also provide a "Duplication" wrapper called "EpisodeDuplication" to keep track of the duplication process.
 And allows us to orchestrate all the jobs we need to run.
+
+## Entity Relationship Diagram
+
+[](assets/database-schema.mmd ':include :type=code mermaid')
 
 ## Initial Migration
 

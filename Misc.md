@@ -28,3 +28,9 @@ This will make it easier to track in our observability tools.
 We should probably have some kind of state machine for the "EpisodeDuplication" model.  
 So that we can make explicit transitions and dispatch events when we transition.  
 So that in our business logic we do not need to remember where and when to dispatch events.
+
+## Deadletter queue / failed jobs queue / queue cleanup
+We need a mechanism to deal with the failed jobs.
+Either manually or semi-automatically.
+
+We need to ensure that are queues are "cleaned up"

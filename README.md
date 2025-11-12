@@ -7,12 +7,6 @@ Solution for duplicating an Episode and its nested structure (Parts > Items > Bl
 View the documentation [here](https://rstek.github.io/cuez-assignment)  
 or you clone the repository and open `index.html` in browser, but know that some embedded code files will not be shown then.
 
-## TODO for Ronald
-
-* Cleanup failed duplications?
-* Partial completes? What if it fails half way, can we recover?
-* Failed jobs? (dead letter queue)
-
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
 Besides a quick 1 day introduction 7 years ago, I haven't created a project with it.    

@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User
+    participant Route
+    participant Queue
+    participant Jobs
+    
+    User->>Route: Duplicate Episode
+    Route->>Queue: Dispatch Job Chain
+    Route-->>User: Accepted
+    
+    Queue->>Jobs: DuplicateEpisode
+    Jobs->>Queue: Next: DuplicateParts
+    
+    Queue->>Jobs: DuplicateParts
+    Jobs->>Queue: Next: DuplicateItems
+    
+    Queue->>Jobs: DuplicateItems
+    Jobs->>Queue: Next: DuplicateBlocks
+    
+    Queue->>Jobs: DuplicateBlocks
+    Jobs-->>Queue: Complete
+    
+    Note over User,Jobs: User tracks progress throughout
+
