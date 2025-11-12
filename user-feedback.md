@@ -27,3 +27,7 @@ At a glance:
 
 Implementation:
 - Use Laravel broadcasting plus the notifications subsystem to wire the channels above.
+
+---
+
+**Next:** [Testing Strategy](Testing.md)

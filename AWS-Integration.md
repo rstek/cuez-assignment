@@ -48,3 +48,7 @@ Store media assets in Amazon S3, keep canonical object keys in the database, and
 - Use OTEL Traces & metrics to provide additional information.
 - I've added comments in code with prefix "OTEL: " where we would add traces/spans
 - Omitted adding events to spans, etc.
+
+---
+
+**Next:** [Miscellaneous Notes](Misc.md)

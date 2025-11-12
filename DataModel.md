@@ -22,3 +22,7 @@ but we add an `EpisodeDuplication` aggregate that tracks the end-to-end copy ope
 [Block](laravel/app/Models/Block.php ':include :code php')
 
 [EpisodeDuplication](laravel/app/Models/EpisodeDuplication.php ':include :code php')
+
+---
+
+**Next:** [Duplication Logic](Duplication.md)

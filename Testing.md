@@ -17,3 +17,7 @@ Focus tests on the duplication workflow and our implementation rules, not on Lar
 ### Observability & Events
 - Assert expected progress/status events/notifications (broadcasts, logs) are emitted per stage so UI feedback stays accurate.
 - Ensure error events include correlation IDs/error codes for support.
+
+---
+
+**Next:** [AWS Integration](AWS-Integration.md)

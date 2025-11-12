@@ -39,7 +39,10 @@ Treat the `laravel/` directory as a scratchpad: docblocks were omitted for brevi
 LLM's were used for:
 - Generating boiler plate diagrams
 - Preforming transformations on multiple files.
-  - For example "insert comments to dispatch events in our jobs in the following cases ...", after which I would go 
+  - For example "insert comments to dispatch events in our jobs in the following cases ...", after which I would go
     through them and check it.
 - Evaluating documentation against goals listed in the assignment brief.
-- 
+
+---
+
+**Next:** [Overview](Overview.md)

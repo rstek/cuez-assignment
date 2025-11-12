@@ -42,3 +42,7 @@ This is a possible solution.
 ```
 
 Listen to the `QueueFailedOver` event so operators get alerted whenever we switch transports; the failover connection becomes the default automatically.
+
+---
+
+**Next:** [User Feedback](user-feedback.md)

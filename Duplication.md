@@ -76,7 +76,7 @@ Will check status of duplication and stop if needed.
 Will handle logging and error handling.  
 
 <details>
-<summary>DuplicateBase class</summary>
+<summary>EXPAND: DuplicateBase class</summary>
 
 [](laravel/app/Jobs/DuplicateBase.php ':include :code php')
 
@@ -90,7 +90,7 @@ Will handle logging and error handling.
 4. Update EpisodeDuplication with new episode id
 
 <details>
-<summary>Duplicate Episode Job</summary>
+<summary>EXPAND: Duplicate Episode Job</summary>
 
 [](laravel/app/Jobs/DuplicateEpisode.php ':include :code php')
 </details>
@@ -102,7 +102,7 @@ Will handle logging and error handling.
 3. Update EpisodeDuplication with progress
 
 <details>
-<summary>Duplicate Parts Job</summary>
+<summary>EXPAND: Duplicate Parts Job</summary>
 
 [](laravel/app/Jobs/DuplicateParts.php ':include :code php')
 </details>
@@ -115,7 +115,7 @@ Will handle logging and error handling.
 4. Update EpisodeDuplication with progress
 
 <details>
-<summary>Duplicate Items Job</summary>
+<summary>EXPAND: Duplicate Items Job</summary>
 
 [](laravel/app/Jobs/DuplicateItems.php ':include :code php')
 </details>
@@ -129,7 +129,7 @@ Will handle logging and error handling.
 4. Update EpisodeDuplication with progress
 
 <details>
-<summary>Duplicate Blocks Job</summary>
+<summary>EXPAND: Duplicate Blocks Job</summary>
 
 [](laravel/app/Jobs/DuplicateBlocks.php ':include :code php')
 </details>
@@ -137,7 +137,7 @@ Will handle logging and error handling.
 ### Alternative naive implementation
 This can be useful for just validating an initial idea / as a proof of concept.
 <details>
-<summary>Naive implementation using replicate </summary>
+<summary>EXPAND: Naive implementation using replicate </summary>
 
 Single Job that duplicates all records.  
 Iterate through the hierarchy and replicate each record.  
@@ -151,3 +151,7 @@ This would be at least 10 * 5 * 20 = 1000 insert/update queries.
 And probably one big DB transaction.
 
 </details>
+
+---
+
+**Next:** [Resiliency & Recovery](Resiliency.md)

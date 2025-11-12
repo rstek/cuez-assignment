@@ -20,4 +20,6 @@ Users get an immediate HTTP acknowledgment and can track the duplication from a 
 
 [](assets/job-chain-sequence.mmd ':include :type=code mermaid')
 
+---
 
+**Next:** [Data Model](DataModel.md)
