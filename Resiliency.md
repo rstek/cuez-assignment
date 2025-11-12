@@ -1,7 +1,5 @@
 # Resiliency & Recovery
 
-
-
 ## Queue failover
 If SQS not available, failover to redis/database driver.
 Set in `config/queue.php`
@@ -25,8 +23,6 @@ We will assume that already duplicated records should not be checked for any dif
 But we need to ensure that new records are also duplicated.
 
 
-
-
 ## Monitoring & Alerting
 
 ### Health Checks
@@ -40,28 +36,4 @@ But we need to ensure that new records are also duplicated.
 - **Warning**: Queue depth >1000 jobs
 - **Info**: Processing time >5 minutes per job
 
-## Data Integrity
 
-### Transaction Management
-- Use database transactions for atomic operations
-- Implement savepoints for long-running operations
-- Ensure rollback capabilities at each level
-
-### Consistency Checks
-```php
-class DuplicationConsistencyCheck
-{
-    public static function validate(int $duplicationId): bool
-    {
-        $duplication = EpisodeDuplication::find($duplicationId);
-        
-        $originalCount = Episode::find($duplication->org_episode_id)
-            ->parts()->withCount(['items', 'items.blocks'])->get();
-            
-        $newCount = Episode::find($duplication->new_episode_id)
-            ->parts()->withCount(['items', 'items.blocks'])->get();
-            
-        return $originalCount->count() === $newCount->count();
-    }
-}
-```

@@ -25,40 +25,53 @@ For a given episode we will create a chain of duplication jobs
 * DuplicateItems
 * DuplicateBlocks
 
-TODO: BUS facade
-BUS::chain()
+We encapsulate this behaviour in our "DuplicateEpisodeAction". Which we can later expand with additional logic.  
+```php
+class DuplicateEpisodeAction {
+
+    public function __invoke(Episode $episode): void {
+        // OTEL: create Root Span - Attributes: episode_id, duplication_id
+        // OTEL: activate span
+        $episodeDuplication = EpisodeDuplication::createForEpisode($episode);
+
+        // OTEL: create child span for job dispatch & start
+        Bus::chain([
+            new DuplicateEpisode($episodeDuplication->id, $episodeDuplication->episode_id),
+            new DuplicateParts($episodeDuplication->id, $episodeDuplication->episode_id),
+            new DuplicateItems($episodeDuplication->id, $episodeDuplication->episode_id),
+            new DuplicateBlocks($episodeDuplication->id, $episodeDuplication->episode_id),
+        ])->catch(function(Throwable $e) use ($episodeDuplication) {
+            // Handle the exception
+            $episodeDuplication->failed($e);
+        })->onConnection('sqs')->onQueue('duplicate_episodes')->dispatch();
+    }
+
+}
+
+```
 
 ### Job Middleware
 
 To ensure robust and controlled execution, we'll implement several job middleware:
-
-#### WithoutOverlap Middleware
-Prevents the same episode from being duplicated simultaneously:
 ```php
-use Illuminate\Queue\Middleware\WithoutOverlapping;
-
-public function middleware()
-{
-    return [new WithoutOverlapping("episode:{$this->orgEpisodeId}")];
+abstract class DuplicateBase implements ShouldQueue {
+    ...
 }
-```
 
-#### Throttling Middleware
-Controls job execution rate based on database load:
-```php
-use Illuminate\Queue\Middleware\ThrottlesExceptions;
+    public function middleware(): array {
+        return [
+            new ThrottlesExceptions(5, 60), // Allow 5 exceptions per minute
+            new WithoutOverlapping("duplication:{$this->duplicationId}"),
+            // add middleware that checks RDS load and delays job if too high
+        ];
+    }
 
-public function middleware()
-{
-    return [
-        new ThrottlesExceptions(5, 1), // Allow 5 exceptions per minute
-        new WithoutOverlapping("episode:{$this->orgEpisodeId}")
-    ];
+    ...
 }
 ```
 
 #### Database Load Awareness
-Monitor RDS CloudWatch metrics and adjust queue processing:
+Potential Monitor RDS CloudWatch metrics and adjust queue processing:
 ```php
 class DatabaseLoadMiddleware
 {
@@ -89,7 +102,6 @@ Limit concurrent duplication jobs to prevent database overload:
     'memory' => 256,
 ]
 ```
-
 
 ### Bulk insert
 Use bulk insert to reduce amount of queries happening

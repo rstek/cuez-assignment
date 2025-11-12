@@ -23,10 +23,9 @@ class DuplicateParts extends DuplicateBase {
         ]);
         // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'parts', message => 'parts duplication started'
 
-
         $totalParts = 0;
         $processedChunks = 0;
-
+        // OTEL: create span for database query span
         Part::query()
             ->where('episode_id', $this->orgEpisodeId)
             ->chunk(self::CHUNK_SIZE, function(Collection $parts) use (&$totalParts, &$processedChunks) {
@@ -41,14 +40,15 @@ class DuplicateParts extends DuplicateBase {
         ]);
         // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'parts', message => 'parts finished duplicating', total_parts => $totalParts
 
+        // OTEL: end database query span
     }
-
-
 
     /**
      * Process a chunk of parts.
      */
     private function processChunk(Collection $parts, int $chunkNumber): void {
+        // OTEL: create span for processing Chunk
+
         $duplicateParts = [];
 
         /** @var Collection<Part> $parts */
@@ -64,16 +64,19 @@ class DuplicateParts extends DuplicateBase {
             'parts_in_chunk' => count($duplicateParts),
         ]);
 
+        // OTEL: create span for transaction
         DB::transaction(function() use ($duplicateParts) {
             // TODO: dispatch event duplication.progress: id => $this->duplicationId, stage => 'parts', amount => count($duplicateParts)
 
             DB::table('parts')->insert($duplicateParts);
             $this->episodeDuplication->addProgress('parts', count($duplicateParts));
         }, attempts: 3);
+        // OTEL: end transaction span
 
         $this->log('debug', 'Chunk processed successfully', [
             'chunk_number' => $chunkNumber,
             'parts_inserted' => count($duplicateParts),
         ]);
     }
+
 }

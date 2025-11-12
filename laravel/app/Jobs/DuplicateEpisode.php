@@ -2,19 +2,18 @@
 
 namespace App\Jobs;
 
-use App\Models\Episode;
-use App\Models\EpisodeDuplication;
-use Illuminate\Support\Facades\DB;
-use Throwable;
 use App\Exceptions\OriginalEpisodeNotFound;
+use App\Models\Episode;
+use Illuminate\Support\Facades\DB;
 
-class DuplicateEpisode extends DuplicateBase
-{
+class DuplicateEpisode extends DuplicateBase {
+
     /**
      * Handle the duplication of the episode.
      */
-    protected function handleDuplication(): void
-    {
+    protected function handleDuplication(): void {
+        // OTEL: create span for loading original episode
+
         $episode = Episode::query()->where('id', $this->orgEpisodeId)->first();
 
         if (!$episode) {
@@ -27,8 +26,11 @@ class DuplicateEpisode extends DuplicateBase
         $this->log('debug', 'Original episode loaded', [
             'episode_title' => $episode->title,
         ]);
+        // OTEL: end episode load span
 
-        DB::transaction(function () use ($episode) {
+        // OTEL: create span for transaction
+
+        DB::transaction(function() use ($episode) {
             $newEpisode = $episode->replicate(['id']);
             $newEpisode->orig_id = $episode->id;
             $newEpisode->save();
@@ -41,10 +43,12 @@ class DuplicateEpisode extends DuplicateBase
             $this->episodeDuplication->update(['new_episode_id' => $newEpisode->id]);
             // TODO: dispatch event duplication.feedback: id => $this->duplicationId, stage => 'episode', message => 'episode duplicated', amount => 1
 
-
             $this->log('info', 'Episode duplication completed', [
                 'new_episode_id' => $newEpisode->id,
             ]);
         }, attempts: 3);
+        // OTEL: end transaction span
+
     }
+
 }

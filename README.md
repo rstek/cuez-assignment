@@ -4,7 +4,7 @@ Written by Ronald Spilstijns (representing RSTEK bv)
 Date 11/11/2025
 Solution for duplicating an Episode and its nested structure (Parts > Items > Blocks) in a Laravel 12 context.  
 
-**Clone repo and open `index.html` in browser to view with docsify.**
+**Clone repo and open `docs/index.html` in browser to view with docsify.**
 Or you can view it in github.
 
 ## TODO for Ronald
@@ -14,19 +14,11 @@ Or you can view it in github.
   * Get DB load for throttling (RDS / cloudwatch integration?)
 
 * Cleanup failed duplications?
-* AWS services
-  * RDS postgress
-  * Media S3 references
-  * SQS queues
-  * CloudWatch
 * Horizon ???
 * Queue / job being dependend on DB load?
 * Partial completes? What if it fails half way, can we recover?
 * Failed jobs? (dead letter queue)
 * Rollbacks?
-
-* Events around the duplication
-* Testing strategy
 
 
 ## Context
@@ -45,6 +37,9 @@ Async, queues, jobs, ...
 - High level overview: [Overview](Overview.md)
 - Data model: [DataModel](DataModel.md)
 - Proposed duplication approach: [Duplication](Duplication.md)
+- The laravel sub folder should be considered my "scratch" pad for this assignment. 
+  - docblocks were omitted for brevity.
+  - Most of the code has never been ran. Basically used it for intellisense / autocomplete / artisan commands.
 
 ## Assumptions
 
