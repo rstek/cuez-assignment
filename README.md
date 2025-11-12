@@ -34,7 +34,8 @@ Or you can view it in github.
 * The Broadcasting + notifications
 * remove Duplication jobs table from model, no added value atm. 
 * Testing strategy
-
+* Update datamodel with "enabled / available" flag, so that we can filter out episodes, parts, items, blocks that haven't finished duplicating yet.
+* 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
 Besides a quick 1 day introduction 7 years ago, I haven't created a project with it.    
