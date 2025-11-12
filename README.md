@@ -1,10 +1,10 @@
 # Episode Duplication Assignment
 
-Solution design and support material for duplicating an Episode and its nested structure (Parts > Items > Blocks) in a Laravel 12 context.
-
-Written by Ronald Spilstijns (representing RSTEK bv)
-
+Solution design and support material for duplicating an Episode and its nested structure (Parts > Items > Blocks) in a Laravel 12 context.  
+Written by Ronald Spilstijns (representing RSTEK bv)  
 Date 11/11/2025
+
+Clone repo and open `index.html` in browser to view with docsify.
 
 ## Contents
 - Assignment brief: [ASSIGNMENT](./ASSIGNMENT.md)
