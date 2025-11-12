@@ -26,8 +26,12 @@ Or you can view it in github.
 * Failed jobs? (dead letter queue)
 * Rollbacks?
 * Diagrams, mermaid
+  * Archictural diagram
+  * Entity relationship diagram
+  * Sequence diagram?
 * Events around the duplication
 * The Broadcasting + notifications
+* remove Duplication jobs table from model, no added value atm. 
 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
