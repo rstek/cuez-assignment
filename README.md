@@ -26,6 +26,8 @@ Or you can view it in github.
 * Failed jobs? (dead letter queue)
 * Rollbacks?
 * Diagrams, mermaid
+* Events around the duplication
+* The Broadcasting + notifications
 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
