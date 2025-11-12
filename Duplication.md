@@ -29,7 +29,11 @@ Use bulk insert to reduce amount of queries happening
 
 We would introduce a BaseDuplication job with some basic functionality.  
 And then extend it for each level of duplication.
-Original episode ID and new episode ID are available in the EpisodeDuplication model.  
+Original episode ID and new episode ID are available in the EpisodeDuplication model.
+
+Given that we chunk our queries, we can use a single transaction for each chunk.
+And if the amount of objects is smaller than our chunk sizes,   
+we will limit the amount of insert / update queries to a single query for each level of the hierarchy.
 
 #### Base Duplication Job
 Provides basic functionality for all duplication jobs.
@@ -254,7 +258,7 @@ class DuplicateParts extends DuplicateBase {
 
 #### Duplicate Items
 0. DuplicationBase::handle() will decide if we continue
-1. Given the new episode id, get all new parts and list all their original part ids.
+1. Given the new episode id, get all new parts (chunked) and list all their original part ids.
 2. Given the list of original part ids, find all items for those parts to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 3. Bulk insert duplicate items for each chunk 
 4. Update EpisodeDuplication with progress
@@ -374,8 +378,8 @@ class DuplicateItems extends DuplicateBase
 
 #### Duplicate Blocks
 0. DuplicationBase::handle() will decide if we continue
-1. Given the new episode id, get all new parts 
-2. For each new part, get all the new items. And list their original item ids.
+1. Given the new episode id, get all new parts (chunked)
+2. For each new part, get all the new items (chunked). And list their original item ids.
 2. Given the list of original item ids, find all blocks for those items to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 3. Bulk insert duplicate blocks for each chunk
 4. Update EpisodeDuplication with progress
@@ -387,31 +391,16 @@ This can be useful for just validating an initial idea / as a proof of concept.
 <details>
 <summary>Naive implementation using replicate </summary>
 
+Single Job that duplicates all records.  
+Iterate through the hierarchy and replicate each record.  
+1. Replicate episode
+2. for each part of episode, replicate part and set episode_id to new episode.
+3. for each original part, get the original items, and for each item, replicate item and set part_id to new part.
+4. For each original item, get the original blocks, and for each block, replicate block and set item_id to new item.
 
-#### Duplicate Episode
-
-1. Find episode to duplicate
-2. Replicate without ID
-3. Save
-4. Update EpisodeDuplication with new episode id
-
-#### Duplicate Parts
-
-1. Find parts for given episode to duplicate
-2. Replicate without ID
-3. Save
-
-#### Duplicate Items
-
-1. Find items for given part to duplicate
-2. Replicate without ID
-3. Save
-
-#### Duplicate Blocks
-
-1. Find blocks for given item to duplicate
-2. Replicate without ID
-3. Save
+So for a single episode with 10 parts, with each 5 items and each 20 blocks.
+This would be at least 10 * 5 * 20 = 1000 insert/update queries.
+And probably one big DB transaction.
 
 </details>
 
