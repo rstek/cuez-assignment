@@ -49,6 +49,7 @@ Async, queues, jobs, ...
 
 ## Contents
 - Assignment brief: [ASSIGNMENT](./ASSIGNMENT.md)
+- High level overview: [Overview](./Overview.md)
 - Data model: [DataModel](./DataModel.md)
 - Proposed duplication approach: [Duplication](./Duplication.md)
 

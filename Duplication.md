@@ -551,7 +551,3 @@ This would be at least 10 * 5 * 20 = 1000 insert/update queries.
 And probably one big DB transaction.
 
 </details>
-
-
-
-
