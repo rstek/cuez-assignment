@@ -40,7 +40,7 @@ abstract class DuplicateBase implements ShouldQueue {
         return [
             new ThrottlesExceptions(5, 60), // Allow 5 exceptions per minute
             new WithoutOverlapping("duplication:{$this->duplicationId}"),
-            // add middleware that checks RDS load and delays job if too high
+            new DatabaseLoadMiddleware()// add middleware that checks RDS load and delays job if too high
         ];
     }
 
@@ -49,7 +49,7 @@ abstract class DuplicateBase implements ShouldQueue {
 ```
 
 #### Database Load Awareness
-Potential Monitor RDS CloudWatch metrics and adjust queue processing:
+Example of the kind that allows you to Monitor RDS CloudWatch metrics and adjust queue processing:
 ```php
 class DatabaseLoadMiddleware
 {

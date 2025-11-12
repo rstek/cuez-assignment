@@ -55,8 +55,8 @@ A media reference would be a canonical object key not a pre-signed URL.
 - Info: System performance metrics
 
 ### Logging
-- Structured JSON logs for easy parsing
-- Correlation IDs for request tracing
+- Structured logs pushed to loki / ... 
+- Correlation IDs for request tracing if possible
 - Using our custom exceptions for tracking
 
 ### Open telemetry
