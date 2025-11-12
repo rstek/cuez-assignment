@@ -27,4 +27,4 @@ This will make it easier to track in our observability tools.
 ## State machine
 We should probably have some kind of state machine for the "EpisodeDuplication" model.  
 So that we can make explicit transitions and dispatch events when we transition.  
-So that in our business logic we do not need to remember where and when to dispatch events.  
+So that in our business logic we do not need to remember where and when to dispatch events.

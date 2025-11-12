@@ -5,7 +5,6 @@ We have the expected "Episode", "Part", "Item", "Block" models.
 But we also provide a "Duplication" wrapper called "EpisodeDuplication" to keep track of the duplication process.  
 And allows us to orchestrate all the jobs we need to run.
 
-
 ## Initial Migration
 
 ```php
@@ -49,10 +48,14 @@ And allows us to orchestrate all the jobs we need to run.
         Schema::create('duplications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('episode_id')->constrained()->onDelete('cascade');
-            $table->foreignId('new_episode_id')->constrained()->onDelete('cascade');
+            $table->foreignId('new_episode_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('status')->default('pending'); // pending, in_progress, failed, completed
             $table->json('progress')->default('{}');
             $table->timestamps();
         });
     }
 ```
+
+## Models
+
+[](laravel/app/Models/Episode.php ':include :code lang=php')

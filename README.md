@@ -29,6 +29,11 @@ Async, queues, jobs, ...
 - High level overview: [Overview](Overview.md)
 - Data model: [DataModel](DataModel.md)
 - Proposed duplication approach: [Duplication](Duplication.md)
+- User feedback: [User Feedback](user-feedback.md)
+- AWS Integration: [AWS Integration](AWS-Integration.md)
+- Testing Strategy: [Testing](Testing.md)
+- Resiliency & Recovery: [Resiliency](Resiliency.md)
+- Miscellaneous: [Misc](Misc.md)
 - The laravel sub folder should be considered my "scratch" pad for this assignment. 
   - docblocks were omitted for brevity.
   - Most of the code has never been ran. Basically used it for intellisense / autocomplete / artisan commands.
@@ -43,5 +48,7 @@ Async, queues, jobs, ...
 ## Setup
 
 - Episode feature would live under the `app` namespace; no modules (e.g., `nwidart/laravel-modules`) for this assignment
-- Queue setting `after_commit` is true to avoid enqueuing jobs inside transactions that might roll back
+- Queue setting `after_commit` is true to avoid enqueuing jobs inside transactions that might roll back (just in case)
 - Local development use "database" driver for queue. Other environments could use AWS SQS or another managed / hosted solution.
+- DB transaction isolation level should not be "READ UNCOMMITTED". Only actually committed data should be visible. 
+  - Allowed options: READ COMMITTED, REPEATABLE READ, SERIALIZABLE
