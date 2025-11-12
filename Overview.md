@@ -12,13 +12,12 @@ Users get an immediate HTTP acknowledgment and can track the duplication from a 
 
 [](assets/architecture-flow.mmd ':include :type=code mermaid')
 
-### 2. Job Chain Sequence Diagram
-
-[](assets/job-chain-sequence.mmd ':include :type=code mermaid')
-
-### 3. Database Schema Diagram
+### 2. Database Schema Diagram
 
 [](assets/database-schema.mmd ':include :type=code mermaid')
 
+### 3. Detailed sequence Diagram
+
+[](assets/job-chain-sequence.mmd ':include :type=code mermaid')
 
 

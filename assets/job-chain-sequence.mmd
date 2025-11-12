@@ -1,24 +1,62 @@
 sequenceDiagram
     participant User
+    participant Client
     participant Route
     participant Queue
     participant Jobs
-    
-    User->>Route: Duplicate Episode
-    Route->>Queue: Dispatch Job Chain
-    Route-->>User: Accepted
-    
-    Queue->>Jobs: DuplicateEpisode
-    Jobs->>Queue: Next: DuplicateParts
-    
-    Queue->>Jobs: DuplicateParts
-    Jobs->>Queue: Next: DuplicateItems
-    
-    Queue->>Jobs: DuplicateItems
-    Jobs->>Queue: Next: DuplicateBlocks
-    
-    Queue->>Jobs: DuplicateBlocks
-    Jobs-->>Queue: Complete
-    
-    Note over User,Jobs: User tracks progress throughout
+    participant Events
+    participant OTEL
+    participant DB
 
+    Note over OTEL: Root Span Created
+    User->>Route: POST /episodes/{id}/duplicate
+    Route->>DB: Create EpisodeDuplication
+    Route->>Queue: Dispatch Job Chain
+    Route-->>User: 202 Accepted {duplication_id}
+
+    Note over Queue,Jobs: Job 1: DuplicateEpisode
+    Queue->>Jobs: DuplicateEpisode
+    Note over OTEL: Span: duplicate-episode
+    Jobs->>DB: Transaction: Create Episode
+    Jobs->>Events: duplication.started
+    Events-->>Client: Broadcast (WebSocket)
+    Jobs->>Queue: Chain: DuplicateParts
+
+    Note over Queue,Jobs: Job 2: DuplicateParts
+    Queue->>Jobs: DuplicateParts (chunks)
+    Note over OTEL: Span: duplicate-parts
+    loop Each Chunk
+        Jobs->>DB: Transaction: Bulk Insert Parts
+        Jobs->>Events: duplication.progress
+        Events-->>Client: Broadcast Progress
+    end
+    Jobs->>Queue: Chain: DuplicateItems
+
+    Note over Queue,Jobs: Job 3: DuplicateItems
+    Queue->>Jobs: DuplicateItems (chunks)
+    Note over OTEL: Span: duplicate-items
+    loop Each Chunk
+        Jobs->>DB: Transaction: Bulk Insert Items
+        Jobs->>Events: duplication.progress
+        Events-->>Client: Broadcast Progress
+    end
+    Jobs->>Queue: Chain: DuplicateBlocks
+
+    Note over Queue,Jobs: Job 4: DuplicateBlocks
+    Queue->>Jobs: DuplicateBlocks (chunks)
+    Note over OTEL: Span: duplicate-blocks
+    loop Each Chunk
+        Jobs->>DB: Transaction: Bulk Insert Blocks
+        Jobs->>Events: duplication.progress
+        Events-->>Client: Broadcast Progress
+    end
+    Jobs->>Events: duplication.completed
+    Events-->>Client: Broadcast Complete + Notification
+    Note over OTEL: Close Root Span
+
+    alt Failure at any stage
+        Jobs->>DB: Update status=failed
+        Jobs->>Events: duplication.failed
+        Events-->>Client: Broadcast Error + Notification
+        Note over OTEL: Record Exception
+    end
