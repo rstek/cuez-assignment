@@ -1,0 +1,4 @@
+- [Readme](README.md)
+- [Data Model](DataModel.md)
+- [Duplication](Duplication.md)
+- [Assignment](ASSIGNMENT.md)
