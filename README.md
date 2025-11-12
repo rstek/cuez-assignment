@@ -5,7 +5,7 @@ Date 12/11/2025
 Solution for duplicating an Episode and its nested structure (Parts > Items > Blocks) in a Laravel 12 context.  
 
 **Clone repo and open `index.html` in browser to view with docsify.**
-Or you can view it in github.
+Or you can view it in github https://rstek.github.io/cuez-assignment
 
 ## TODO for Ronald
 
