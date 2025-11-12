@@ -1,6 +1,8 @@
 # Resiliency & Recovery
 
 ## Queue failover
+Potential failover to other queue drivers.
+
 If SQS not available, failover to redis/database driver.
 Set in `config/queue.php`
 ```php
@@ -21,7 +23,6 @@ Let's assume a job fails. We should be able to resume the duplication process fr
 This means we need to be able to track which IDs we have processed and which we have not.
 We will assume that already duplicated records should not be checked for any diffs since duplication.
 But we need to ensure that new records are also duplicated.
-
 
 ## Monitoring & Alerting
 
