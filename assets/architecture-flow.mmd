@@ -1,6 +1,6 @@
 flowchart TD
     A[User Request] --> B[Laravel Route]
-    B --> C[Create Duplication Record]
+    B --> C[Create Episode Duplication Record]
     C --> D[Queue Job Chain]
     C --> E[Return Response]
 
@@ -11,7 +11,7 @@ flowchart TD
     I --> J[Mark Complete]
 
     E --> K[User Tracks Progress]
-    J --> K
+    J --> K[Send notification / broadcast to client]
 
     style A fill:#e1f5fe
     style E fill:#c8e6c9

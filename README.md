@@ -1,48 +1,36 @@
 # Episode Duplication Assignment
 
-Written by Ronald Spilstijns (representing RSTEK bv)  
-Date 12/11/2025
-Solution for duplicating an Episode and its nested structure (Parts > Items > Blocks) in a Laravel 12 context.  
+Written by Ronald Spilstijns (RSTEK bv) – 12/11/2025  
+Proposed Laravel 12 design for duplicating Episodes and their nested Parts → Items → Blocks.
 
-View the documentation [here](https://rstek.github.io/cuez-assignment)  
-or you clone the repository and open `index.html` in browser, but know that some embedded code files will not be shown then.
+Read the docs online at <https://rstek.github.io/cuez-assignment>.  
+If you prefer a local copy, clone the repository and open `index.html` (note: embedded code snippets from `laravel/` will not render in that static view).
 
 ## Context
-My background is not in Laravel, I knew of it and kept following it.  
-Besides a quick 1 day introduction 7 years ago, I haven't created a project with it.    
-However, I got the feeling that Laravel is important for Cuez.  
-So I took it upon myself to write this solution with laravel.  
-With the help of laracast, laravel documentation.
+My hands-on Laravel experience was limited to a one-day intro about seven years ago, but given its importance to Cuez I propose this solution in Laravel, leaning on Laracasts and the official documentation.  
+Most of my background is in Drupal, Symfony, and plain PHP, so the architectural choices mirror what I would build there: asynchronous queues, background jobs, and aggressive chunking for heavy data work.
 
-My main experience is with Drupal, symfony, and plain php.  
-And the solution I would build with Drupal is similar.
-Async, queues, jobs, ...
+Treat the `laravel/` directory as a scratchpad: docblocks were omitted for brevity and most files were never executed—they exist mainly for IntelliSense, scaffolding, and to illustrate the approach.
 
 ## Contents
 - Assignment brief: [ASSIGNMENT](ASSIGNMENT.md)
-- High level overview: [Overview](Overview.md)
+- High-level overview: [Overview](Overview.md)
 - Data model: [DataModel](DataModel.md)
-- Proposed duplication approach: [Duplication](Duplication.md)
-- User feedback: [User Feedback](user-feedback.md)
-- AWS Integration: [AWS Integration](AWS-Integration.md)
-- Testing Strategy: [Testing](Testing.md)
-- Resiliency & Recovery: [Resiliency](Resiliency.md)
-- Miscellaneous: [Misc](Misc.md)
-- The laravel sub folder should be considered my "scratch" pad for this assignment. 
-  - docblocks were omitted for brevity.
-  - Most of the code has never been ran. Basically used it for intellisense / autocomplete / artisan commands.
+- Duplication workflow: [Duplication](Duplication.md)
+- User feedback plan: [user-feedback](user-feedback.md)
+- AWS integration notes: [AWS-Integration](AWS-Integration.md)
+- Testing strategy: [Testing](Testing.md)
+- Resiliency & recovery: [Resiliency](Resiliency.md)
+- Miscellaneous considerations: [Misc](Misc.md)
 
 ## Assumptions
-
-- All Parts, Items, and Blocks are unique per Episode (no reuse across Episodes)
-- Episode has only an ID and a Title; no author or additional metadata
-- Duplications can only succeed when the whole hierarchy is duplicated; So when a part fails we stop the duplication process and cleanup.
-- "Media" for blocks is an external reference for which we will copy the reference
+- Parts, Items, and Blocks are unique to a given Episode (no cross-episode reuse).
+- Episodes contain only `id` and `title`; no authoring metadata is duplicated.
+- Duplication succeeds only when the entire hierarchy copies successfully; any failure aborts the run and triggers cleanup.
+- Block `media` fields store references to external assets, so duplication copies the reference rather than the file itself.
 
 ## Setup
-
-- Episode feature would live under the `app` namespace; no modules (e.g., `nwidart/laravel-modules`) for this assignment
-- Queue setting `after_commit` is true to avoid enqueuing jobs inside transactions that might roll back (just in case)
-- Local development use "database" driver for queue. Other environments could use AWS SQS or another managed / hosted solution.
-- DB transaction isolation level should not be "READ UNCOMMITTED". Only actually committed data should be visible. 
-  - Allowed options: READ COMMITTED, REPEATABLE READ, SERIALIZABLE
+- Episode functionality lives under the default `app` namespace—no modular packages (e.g., `nwidart/laravel-modules`) are introduced for this exercise.
+- Queue configuration sets `after_commit = true` so jobs are enqueued only after the surrounding transaction commits.
+- Local development can run the database queue driver; higher environments should use AWS SQS or another managed queue.
+- Database isolation must be at least `READ COMMITTED` (ideally `REPEATABLE READ` or `SERIALIZABLE`) so only committed data is visible to the jobs.
