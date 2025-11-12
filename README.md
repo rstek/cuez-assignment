@@ -13,7 +13,7 @@ Or you can view it in github.
   * Concurrency? so locking that the same episode isn't duplicated twice at the same time.
 * Cache warmup mention?
 * Cache in general?
-* Batching vs chunking mentioned in docs
+* Batching vs chunking + bulk inserts mentioned in docs
 * Cleanup failed duplications?
 * AWS services
   * RDS postgress
