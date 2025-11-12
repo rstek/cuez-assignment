@@ -8,10 +8,14 @@ Solution for duplicating an Episode and its nested structure (Parts > Items > Bl
 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
-But besides a quick 1 day introduction 7 years ago, I haven't created a project with it.    
+Besides a quick 1 day introduction 7 years ago, I haven't created a project with it.    
 However, I got the feeling that Laravel is important for Cuez.  
 So I took it upon myself to write this solution with laravel.  
 With the help of laracast, laravel documentation.
+
+My main experience is with Drupal, symfony, and plain php.
+And the solution I would build with Drupal is similar.
+Async, queues, jobs, ...
 
 ## Contents
 - Assignment brief: [ASSIGNMENT](./ASSIGNMENT.md)
