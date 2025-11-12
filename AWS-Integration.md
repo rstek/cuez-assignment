@@ -1,29 +1,18 @@
 # AWS Integration
 
-This document outlines the AWS services that would/could be used to support the episode duplication system in a production environment.
-
-## Note
-
-I haven't used the AWS ecosystem much.   
-So based on documentation online I would use the following services.
+This document outlines the AWS services that would back the episode duplication system in production.  
+My direct AWS experience is limited, so the choices below lean on documented best practices.
 
 ## Services
-We would use the following services.
+We could use the following services.
 
 ![AWS.drawio.png](assets/AWS.drawio.png)
 
 ### Database (RDS PostgreSQL)
-Amazon RDS for our relational database.  
-We could then use the CloudWatch metrics to monitor the database load and adjust the queue processing accordingly.  
-By creating a custom middleware, we can check the RDS CPU utilization and delay the job if it's too high.
+Run the relational workload on Amazon RDS for PostgreSQL. CloudWatch metrics (CPU, connections, I/O) feed into our queue middleware so jobs can pause or slow down when the database gets hot.
 
 ### Queue Management (SQS)
-Based on documentation we should probably use the SQS FIFO queue.  
-A "episode duplication" FIFO queue.
-
-Which means we need to provide a "message group ID". To determine which jobs can be processed in parallel. (Same id, no parallelism. Different id, parallelism.)    
-Additionally we could look into the "message deduplication" feature of SQS FIFO queues.  
-Then we should provide a deduplicationId method on our jobs
+Use an SQS FIFO queue dedicated to duplications. FIFO requires a message group ID—use the duplication ID so jobs for the same episode run serially—and supports message deduplication via a `deduplicationId` method on each job:
 ```php
     /**
      * Get the job's deduplication ID.
@@ -35,11 +24,7 @@ Then we should provide a deduplicationId method on our jobs
 ```
 
 ### File Storage (S3)
-Use amazon S3 for storing media files.  
-We could use the S3 SDK to generate pre-signed URLs for accessing the media files.  
-This way we can avoid exposing the S3 bucket to the public.  
-And we can control the access to the media files.  
-A media reference would be a canonical object key not a pre-signed URL.  
+Store media assets in Amazon S3, keep canonical object keys in the database, and issue pre-signed URLs when clients need temporary access so the bucket stays private.
 
 ### Monitoring & Logging (CloudWatch)
 
@@ -55,9 +40,9 @@ A media reference would be a canonical object key not a pre-signed URL.
 - Info: System performance metrics
 
 ### Logging
-- Structured logs pushed to loki / ... 
-- Correlation IDs for request tracing if possible
-- Using our custom exceptions for tracking
+- Push structured JSON logs to CloudWatch (or Loki) so they can be queried easily.
+- Include correlation IDs/request IDs whenever possible.
+- Surface domain-specific errors via custom exceptions for better filtering.
 
 ### Open telemetry
 - Use OTEL Traces & metrics to provide additional information.

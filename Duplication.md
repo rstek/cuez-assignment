@@ -1,11 +1,7 @@
 # Duplication
 
-The duplication process will happen asynchronously. 
-Since it can be database-intensive, we do not want to block our end user.
-
-This means when a user initiates a duplication, we will create the necessary records and jobs.  
-And return a response to the user immediately and provide feedback to the user in another way.  
-Notifications through websockets or server sent events or ... and / or a live refreshing overview of duplications in progress.
+We execute duplication asynchronously so the initiating request finishes quickly and the database remains responsive.  
+When a user starts the flow we create the tracking records, enqueue the job chain, return immediately, and then keep the user informed via websockets, SSE, or a live duplication status page.
 
 
 ## Model
@@ -30,7 +26,7 @@ We encapsulate this behaviour in our "DuplicateEpisodeAction". Which we can late
 
 ### Job Middleware
 
-To ensure robust and controlled execution, we'll implement several job middleware:
+Middleware keeps the queue work predictable under load:
 ```php
 abstract class DuplicateBase implements ShouldQueue {
     ...
@@ -49,7 +45,7 @@ abstract class DuplicateBase implements ShouldQueue {
 ```
 
 #### Database Load Awareness
-Example of the kind that allows you to Monitor RDS CloudWatch metrics and adjust queue processing:
+Example middleware that reads RDS CloudWatch metrics and slows the queue when the database is under pressure:
 ```php
 class DatabaseLoadMiddleware
 {
@@ -68,19 +64,14 @@ class DatabaseLoadMiddleware
 ```
 
 ### Bulk insert
-Use bulk insert to reduce amount of queries happening
 
-We would introduce a BaseDuplication job with some basic functionality.  
-And then extend it for each level of duplication.
-Original episode ID and new episode ID are available in the EpisodeDuplication model.
-
-Given that we chunk our queries, we can use a single transaction for each chunk.
-And if the amount of objects is smaller than our chunk sizes,   
-we will limit the amount of insert / update queries to a single query for each level of the hierarchy.
+Every job extends a `DuplicationBase` job that supplies shared behavior (feature flags, early exits, logging, OTEL hooks).  
+Because the Episode and its children are mapped with `orig_id`, each job can build the mapping it needs and perform chunked bulk inserts.  
+Each chunk is wrapped in a short transaction, keeping the number of SQL statements predictable even for large hierarchies.
 
 #### Base Duplication Job
-Provides basic functionality for all duplication jobs.
-Checks if the featureflag is enabled.
+Provides basic functionality for all duplication jobs. 
+Checks if the featureflag is enabled.  
 Will check status of duplication and stop if needed.  
 Will handle logging and error handling.  
 
@@ -92,7 +83,7 @@ Will handle logging and error handling.
 </details>
 
 #### Duplicate Episode (single record)
-0. DuplicationBase::handle() will decide if we continue
+0. `DuplicationBase::handle()` decides if we should continue.
 1. Find episode to duplicate
 2. Replicate without ID
 3. Save
@@ -105,7 +96,7 @@ Will handle logging and error handling.
 </details>
 
 #### Duplicate Parts
-0. DuplicationBase::handle() will decide if we continue
+0. `DuplicationBase::handle()` decides if we should continue.
 1. Find parts for given episode to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 2. Bulk insert duplicate parts for each chunk
 3. Update EpisodeDuplication with progress
@@ -117,7 +108,7 @@ Will handle logging and error handling.
 </details>
 
 #### Duplicate Items
-0. DuplicationBase::handle() will decide if we continue
+0. `DuplicationBase::handle()` decides if we should continue.
 1. Given the new episode id, get all new parts (chunked) and list all their original part ids.
 2. Given the list of original part ids, find all items for those parts to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 3. Bulk insert duplicate items for each chunk 
@@ -130,9 +121,9 @@ Will handle logging and error handling.
 </details>
 
 #### Duplicate Blocks
-0. DuplicationBase::handle() will decide if we continue
+0. `DuplicationBase::handle()` decides if we should continue.
 1. Given the new episode id, get all new parts (chunked)
-2. For each new part, get all the new items (chunked). And list their original item ids.
+2. For each new part, get all the new items (chunked) and list their original item ids.
 2. Given the list of original item ids, find all blocks for those items to duplicate and prepare new records. We chunk the query to limit potential performance issues.
 3. Bulk insert duplicate blocks for each chunk
 4. Update EpisodeDuplication with progress

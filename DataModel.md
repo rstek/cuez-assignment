@@ -1,9 +1,7 @@
 # Data Model
 
-We have the expected "Episode", "Part", "Item", "Block" models.
-
-But we also provide a "Duplication" wrapper called "EpisodeDuplication" to keep track of the duplication process.
-And allows us to orchestrate all the jobs we need to run.
+The domain still revolves around the familiar Episode → Part → Item → Block hierarchy,  
+but we add an `EpisodeDuplication` aggregate that tracks the end-to-end copy operation and orchestrates the required jobs.
 
 ## Entity Relationship Diagram
 

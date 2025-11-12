@@ -1,20 +1,10 @@
 # Resiliency & Recovery
 
 ## Restart Mechanisms
-
-Let's assume a job fails. We should be able to resume the duplication process from the last successful DB transaction.
-This means we need to be able to track which IDs we have processed and which we have not.
-We will assume that already duplicated records should not be checked for any diffs since duplication.
-But we need to ensure that new records are also duplicated.
-
-In my originally written solution I forgot to add a mechanism that would provide "repeatability" idempotency.  
-Meaning that if a job fails and is retried, it should not duplicate the records again.
-
-In order to provide this, we would need to update our EpisodeDuplication model to keep track of all the IDs of parts,
-items and blocks that have been duplicated.  
-And then in our duplication jobs we would check if the IDs have already been processed.  
-If so, we would skip them.  
-If not, we would duplicate them.
+If a job fails we resume from the last committed data, which requires tracking which IDs were processed and which still need work.  
+ Already-duplicated rows are treated as immutable copies—we simply skip them on retries—while new rows must be cloned.    
+To get true idempotency the `EpisodeDuplication` model should store or have access to the processed Part/Item/Block IDs (or ranges).  
+ Each job consults that metadata before inserting new records so retries never create duplicates.
 
 ## Monitoring & Alerting
 
@@ -33,11 +23,8 @@ If not, we would duplicate them.
 
 ## Queue failover
 
-Potential failover to other queue drivers.
-
-If SQS not available, failover to redis/database driver.
-Set in `config/queue.php`
-
+If SQS becomes unavailable the queue should fall back to Redis or the database driver via Laravel’s failover configuration (`config/queue.php`):
+This is a possible solution.
 ```php
 'failover' => [
     'driver' => 'failover',
@@ -49,5 +36,4 @@ Set in `config/queue.php`
 ],
 ```
 
-We should probably listen to the `QueueFailedOver` event and log + send a notification when it happens.
-This failover would be our default connection.
+Listen to the `QueueFailedOver` event so operators get alerted whenever we switch transports; the failover connection becomes the default automatically.

@@ -1,36 +1,22 @@
 # Miscellaneous Notes
 
 ## Cache implications
-Assuming there is a cache.
-
-After we duplicate an episode, we should "warm up" the cache for the new episode.  
-This way we can avoid cache misses when the user tries to access the new episode.  
-We could use a job to do this and add it to the end of the job chain.  
+If a cache layer exists, enqueue an additional job at the end of the duplication chain to pre-warm the new episode.  
+That keeps the first user request from suffering a cache miss.
 
 ## Chunking + Bulk inserts vs Batching
-If we would want to use batching for duplicating all parts, items and blocks,  
-we would first need to get a complete list of all the records we want to duplicate.  
-This could be a problem if the dataset is very large.  
-
-By using chunking and bulk inserts we can avoid this problem.  
-You can look at Chunking + Bulk inserts as "streaming data" as we need it.
+Batch-style duplication would require loading every Part/Item/Block into memory before writing, which explodes for large episodes.  
+Chunked bulk inserts stream the data as we go, keeping memory bounded while still minimizing SQL chatter.
 
 ## Enabled flag or boolean
-We should probably include a flag on the models so that parts, items, blocks, episode which are in the process of being created by duplication,  
-are not available elsewhere (you would filter them out).
+Consider an `enabled` (or similar) boolean on each model so records created via duplication stay hidden until the run finishes;  
+other features can simply filter for `enabled = true`.
 
 ## Use Custom exceptions
-When there is a situation that calls for throwing an exception. 
-Make sure to create / use a explicit exception.
-This will make it easier to track in our observability tools.
+Emit domain-specific exceptions instead of generic ones. They make it far easier to route alerts, search logs, and wire structured telemetry.
 
 ## State machine
-We should probably have some kind of state machine for the "EpisodeDuplication" model.  
-So that we can make explicit transitions and dispatch events when we transition.  
-So that in our business logic we do not need to remember where and when to dispatch events.
+A lightweight state machine on `EpisodeDuplication` would codify allowed transitions and centralize the events emitted when we move between states, reducing business-logic repetition.
 
 ## Deadletter queue / failed jobs queue / queue cleanup
-We need a mechanism to deal with the failed jobs.
-Either manually or semi-automatically.
-
-We need to ensure that are queues are "cleaned up"
+Define how failed jobs are triaged—manual replay, automated DLQ consumer, or both—and run periodic cleanup so dead-letter queues do not grow unbounded.

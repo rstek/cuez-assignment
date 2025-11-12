@@ -1,5 +1,5 @@
 # User feedback (high level)
-Keep users informed during workflows (e.g., duplication) without impl details.
+Keep users informed during long-running workflows (duplication, etc.) without surfacing internal implementation details.
 Surfaces:
 - In-app realtime via broadcasts; fallback to polling.
 - Out-of-band (email/Slack/sms/push) for long jobs.
@@ -23,7 +23,7 @@ Channel thresholds:
 Acceptance:
 - Quick start visibility; regular progress; completion deep link; clear failure steps.
 At a glance:
-- Broadcast events keep clients up to date; send OOB on long duplication finish.
+- Broadcast events keep clients current while long-running duplications finish out-of-band.
 
 Implementation:
-- Use the laravel broadcasting & notifications mechanisms 
+- Use Laravel broadcasting plus the notifications subsystem to wire the channels above.

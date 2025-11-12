@@ -1,9 +1,10 @@
 # High level overview
 
-Our solution uses asynchronous job chains to duplicate Episodes and their nested hierarchy (Parts > Items > Blocks) without blocking users or overwhelming the database.  
-A `EpisodeDuplication` wrapper orchestrates the process, tracking progress and status across four sequential jobs that chunk and bulk-insert records at each level.  
-This approach ensures scalability, enables real-time progress feedback, and allows graceful failure handling with transaction-level retries.  
-Users receive immediate confirmation and can monitor duplication progress through broadcasts and notifications.
+The solution relies on an asynchronous job chain so duplicating an Episode (and its Parts → Items → Blocks) never blocks the initiating request or overloads the database.  
+An `EpisodeDuplication` aggregate owns the workflow, recording status, progress, and metadata needed by each of the four sequential jobs.  
+Every job processes input in chunks and bulk-inserts the duplicates, keeping lock times short and throughput high.    
+Because the work runs in the background we can surface real-time progress through broadcasts/notifications while still providing graceful failure handling via transaction-level retries.  
+Users get an immediate HTTP acknowledgment and can track the duplication from a separate progress view.
 
 ## Architecture Diagrams
 
@@ -18,7 +19,6 @@ Users receive immediate confirmation and can monitor duplication progress throug
 ### 3. Database Schema Diagram
 
 [](assets/database-schema.mmd ':include :type=code mermaid')
-
 
 
 
