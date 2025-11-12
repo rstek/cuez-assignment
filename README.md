@@ -7,6 +7,23 @@ Solution for duplicating an Episode and its nested structure (Parts > Items > Bl
 **Clone repo and open `index.html` in browser to view with docsify.**
 Or you can view it in github.
 
+## TODO for Ronald
+* Observability? Metrics? Tracing?
+* Job middleware? Throttle? WithoutOverlap?
+  * Concurrency? so locking that the same episode isn't duplicated twice at the same time.
+* Cache warmup mention?
+* Cache in general?
+* Batching vs chunking?
+* Cleanup failed duplications?
+* AWS services
+  * RDS postgress
+  * Media S3 references
+  * SQS queues
+  * CloudWatch
+* Horizon ???
+* Queue / job being dependend on DB load?
+* Partial completes? What if it fails half way, can we recover?
+
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
 Besides a quick 1 day introduction 7 years ago, I haven't created a project with it.    
@@ -28,6 +45,7 @@ Async, queues, jobs, ...
 - All Parts, Items, and Blocks are unique per Episode (no reuse across Episodes)
 - Episode has only an ID and a Title; no author or additional metadata
 - Duplications can only succeed when the whole hierarchy is duplicated; So when a part fails we stop the duplication process and cleanup.
+- "Media" for blocks is an external reference for which we will copy the reference
 
 ## Setup
 
