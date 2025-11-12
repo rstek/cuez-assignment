@@ -16,7 +16,11 @@ And allows us to orchestrate all the jobs we need to run.
 ## Models
 
 [Episode](laravel/app/Models/Episode.php ':include :code php')
+
 [Part](laravel/app/Models/Part.php ':include :code php')
+
 [Item](laravel/app/Models/Item.php ':include :code php')
+
 [Block](laravel/app/Models/Block.php ':include :code php')
+
 [EpisodeDuplication](laravel/app/Models/EpisodeDuplication.php ':include :code php')
