@@ -6,6 +6,8 @@ If a job fails we resume from the last committed data, which requires tracking w
 To get true idempotency the `EpisodeDuplication` model should store or have access to the processed Part/Item/Block IDs (or ranges).  
  Each job consults that metadata before inserting new records so retries never create duplicates.
 
+In the current described solution on [Duplication](Duplication.md), this isn't present yet.
+
 ### Chunk sizes
 Chunk sizes should probably be set on the EpisodeDuplication record.
 So that when we restart a duplication / continue a failed duplication we can use the same chunk sizes.

@@ -36,11 +36,12 @@ Treat the `laravel/` directory as a scratchpad: docblocks were omitted for brevi
 - Database isolation must be at least `READ COMMITTED` (ideally `REPEATABLE READ` or `SERIALIZABLE`) so only committed data is visible to the jobs.
 
 ## AI / LLM usage
-LLM's were used for:
+LLM's were used for (non exhaustive list):
 - Generating boiler plate diagrams
-- Preforming transformations on multiple files.
-  - For example "insert comments to dispatch events in our jobs in the following cases ...", after which I would go
+- Preforming transformations on multiple files. Some examples:
+  - "insert comments to dispatch events in our jobs in the following cases ...", after which I would go
     through them and check it.
+  - Adding "Next: " links to the documentation.
 - Evaluating documentation against goals listed in the assignment brief.
 
 ---
