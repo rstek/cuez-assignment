@@ -13,7 +13,7 @@ Or you can view it in github.
   * Concurrency? so locking that the same episode isn't duplicated twice at the same time.
 * Cache warmup mention?
 * Cache in general?
-* Batching vs chunking?
+* Batching vs chunking mentioned in docs
 * Cleanup failed duplications?
 * AWS services
   * RDS postgress
@@ -23,6 +23,9 @@ Or you can view it in github.
 * Horizon ???
 * Queue / job being dependend on DB load?
 * Partial completes? What if it fails half way, can we recover?
+* Failed jobs? (dead letter queue)
+* Rollbacks?
+* Diagrams, mermaid
 
 ## Context
 My background is not in Laravel, I knew of it and kept following it.  
